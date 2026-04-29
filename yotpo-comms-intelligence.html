@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loyalty Comms Intelligence — Yotpo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0A0C0F;
+  --bg2: #0F1217;
+  --bg3: #141820;
+  --bg4: #1A2030;
+  --panel: #111318;
+  --border: rgba(255,255,255,0.06);
+  --border-md: rgba(255,255,255,0.1);
+  --border-bright: rgba(255,255,255,0.18);
+  --text-1: #E8EAF0;
+  --text-2: #8B90A0;
+  --text-3: #4A5068;
+  --green: #22C984;
+  --green-dim: rgba(34,201,132,.12);
+  --green-glow: rgba(34,201,132,.25);
+  --amber: #F5A623;
+  --amber-dim: rgba(245,166,35,.12);
+  --red: #F05252;
+  --red-dim: rgba(240,82,82,.12);
+  --blue: #4C9EFF;
+  --blue-dim: rgba(76,158,255,.1);
+  --purple: #A78BFA;
+  --purple-dim: rgba(167,139,250,.1);
+  --teal: #2DD4BF;
+  --teal-dim: rgba(45,212,191,.1);
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text-1);font-size:13px;line-height:1.5;min-height:100vh;overflow-x:hidden}
+
+/* Scanline texture overlay */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:999}
+
+/* ── Grid noise bg ── */
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+
+/* ── Shell ── */
+.shell{position:relative;z-index:1;display:flex;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{width:52px;background:var(--panel);border-right:1px solid var(--border-md);display:flex;flex-direction:column;align-items:center;padding:14px 0 20px;gap:4px;position:sticky;top:0;height:100vh;flex-shrink:0}
+.logo{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:0 0 16px var(--green-glow)}
+.logo svg{width:17px;height:17px;stroke:var(--bg);fill:none;stroke-width:2.5;stroke-linecap:round}
+.nav-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-3);cursor:pointer;transition:all .15s}
+.nav-icon:hover{background:var(--bg4);color:var(--text-2)}
+.nav-icon.active{background:var(--green-dim);color:var(--green)}
+.nav-icon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav-sep{width:24px;height:1px;background:var(--border-md);margin:6px 0}
+
+/* ── Main ── */
+.main{flex:1;overflow-x:hidden;display:flex;flex-direction:column}
+
+/* ── Header ── */
+.header{background:var(--panel);border-bottom:1px solid var(--border-md);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:15}
+.hd-left{display:flex;align-items:center;gap:12px}
+.hd-eyebrow{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite;box-shadow:0 0 0 0 var(--green-glow)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--green-glow)}50%{box-shadow:0 0 0 5px transparent}}
+.hd-title{font-size:16px;font-weight:600;letter-spacing:-.02em;color:var(--text-1)}
+.hd-sub{font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:2px}
+.hd-right{display:flex;align-items:center;gap:10px}
+
+.agent-status{display:flex;align-items:center;gap:7px;background:var(--bg4);border:1px solid var(--border-md);border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:10px;color:var(--text-2)}
+.agent-status .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s ease infinite}
+
+.last-scan{font-family:var(--mono);font-size:10px;color:var(--text-3);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px}
+
+.btn-scan{padding:7px 14px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--green);background:var(--green-dim);color:var(--green);font-family:var(--sans);transition:all .15s;display:flex;align-items:center;gap:5px;letter-spacing:.01em}
+.btn-scan:hover{background:var(--green);color:var(--bg)}
+.btn-scan svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* ── Content ── */
+.content{padding:20px 24px 40px}
+
+/* ── Section label ── */
+.section-label{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:12px;margin-top:24px;display:flex;align-items:center;gap:10px}
+.section-label:first-of-type{margin-top:0}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.section-label .tag{background:var(--bg4);border:1px solid var(--border-md);border-radius:4px;padding:2px 7px;font-size:9px;color:var(--text-2)}
+
+/* ── Overall Score Bar ── */
+.score-overview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.score-card{background:var(--panel);border:1px solid var(--border-md);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:border-color .2s}
+.score-card::before{content:'';position:absolute;inset:0;border-radius:12px;opacity:.06;pointer-events:none}
+.score-card.green-card::before{background:var(--green)}
+.score-card.amber-card::before{background:var(--amber)}
+.score-card.red-card::before{background:var(--red)}
+.score-card:hover{border-color:var(--border-bright)}
+
+.score-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.score-agent{font-family:var(--mono);font-size:9px;color:var(--text-3);display:flex;align-items:center;gap:5px;margin-bottom:6px}
+.score-agent-dot{width:5px;height:5px;border-radius:50%;animation:pulse 2s ease infinite}
+.score-channel{font-size:13px;font-weight:600;color:var(--text-1)}
+.score-badge{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px}
+.score-badge.green{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,201,132,.25)}
+.score-badge.amber{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,.25)}
+.score-badge.red{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,82,82,.25)}
+
+.score-num{font-family:var(--mono);font-size:38px;font-weight:600;letter-spacing:-.04em;line-height:1;margin-bottom:4px}
+.score-num.green{color:var(--green)}
+.score-num.amber{color:var(--amber)}
+.score-num.red{color:var(--red)}
+.score-label{font-size:11px;color:var(--text-3)}
+
+/* Score donut rings replaced with segmented bar */
+.score-bar-wrap{margin-top:14px}
+.score-bar-label{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-bottom:5px;display:flex;justify-content:space-between}
+.score-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.score-bar-fill{height:100%;border-radius:2px;transition:width 1s cubic-bezier(.16,1,.3,1)}
+
+.score-pillars{display:flex;flex-direction:column;gap:5px;margin-top:10px}
+.pillar-row{display:flex;align-items:center;justify-content:space-between}
+.pillar-name{font-size:11px;color:var(--text-2)}
+.pillar-dots{display:flex;gap:3px}
+.pillar-dot{width:8px;height:8px;border-radius:2px}
+.pillar-dot.filled-green{background:var(--green)}
+.pillar-dot.filled-amber{background:var(--amber)}
+.pillar-dot.filled-red{background:var(--red)}
+.pillar-dot.empty{background:var(--bg4)}
+
+/* ── Channel detail cards ── */
+.channel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+
+.ch-card{background:var(--panel);border:1px solid var(--border-md);border-radius:12px;overflow:hidden;transition:border-color .2s}
+.ch-card:hover{border-color:var(--border-bright)}
+
+.ch-header{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ch-icon-name{display:flex;align-items:center;gap:9px}
+.ch-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ch-icon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ch-name{font-size:13px;font-weight:600;color:var(--text-1)}
+.ch-handle{font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:1px}
+.ch-status-pill{font-family:var(--mono);font-size:9px;font-weight:600;padding:3px 8px;border-radius:20px;display:flex;align-items:center;gap:4px}
+.ch-status-pill .pip{width:5px;height:5px;border-radius:50%}
+
+/* Agent crawl line */
+.agent-crawl{padding:8px 15px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;color:var(--text-3);display:flex;align-items:center;gap:7px;overflow:hidden}
+.crawl-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.crawl-tag{font-size:8px;padding:1px 5px;border-radius:3px;flex-shrink:0}
+
+/* Metrics */
+.ch-metrics{padding:12px 15px;display:flex;flex-direction:column;gap:9px}
+.ch-metric{display:flex;align-items:center;justify-content:space-between}
+.ch-metric-label{font-size:11px;color:var(--text-2)}
+.ch-metric-val{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text-1);text-align:right}
+.ch-metric-sub{font-size:9px;color:var(--text-3);text-align:right;margin-top:1px}
+
+/* Mini sparkline */
+.mini-spark{display:flex;align-items:flex-end;gap:2px;height:18px}
+.ms-bar{width:4px;border-radius:1px}
+
+/* Signal row */
+.signal-row{display:flex;gap:3px;margin-top:3px}
+.signal-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* Loyalty comms row */
+.loyalty-comms{padding:10px 15px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.lc-label{font-family:var(--mono);font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.lc-item{display:flex;align-items:center;justify-content:space-between;font-size:11px}
+.lc-name{color:var(--text-2);display:flex;align-items:center;gap:5px}
+.lc-name::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.lc-name.has::before{background:var(--green)}
+.lc-name.miss::before{background:var(--red)}
+.lc-name.partial::before{background:var(--amber)}
+.lc-val{font-family:var(--mono);font-size:10px;color:var(--text-2)}
+
+/* Traffic attribution */
+.traffic-bar-row{padding:10px 15px;border-top:1px solid var(--border)}
+.tb-label{font-family:var(--mono);font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.tb-stack{height:6px;border-radius:3px;display:flex;gap:2px;margin-bottom:6px;overflow:hidden}
+.tb-seg{height:100%;border-radius:2px}
+.tb-legend{display:flex;flex-wrap:wrap;gap:8px}
+.tb-leg-item{font-size:10px;color:var(--text-3);display:flex;align-items:center;gap:4px}
+.tb-leg-sq{width:7px;height:7px;border-radius:1px;flex-shrink:0}
+
+/* Card footer score */
+.ch-footer{padding:10px 15px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3)}
+.ch-footer-score{display:flex;align-items:center;gap:6px}
+.ch-footer-label{font-family:var(--mono);font-size:10px;color:var(--text-3)}
+.ch-score-val{font-family:var(--mono);font-size:14px;font-weight:600}
+.ch-footer-actions{font-family:var(--mono);font-size:9px;color:var(--text-3);display:flex;align-items:center;gap:5px;cursor:pointer}
+.ch-footer-actions:hover{color:var(--blue)}
+
+/* ── AI Agent log ── */
+.agent-log{background:var(--panel);border:1px solid var(--border-md);border-radius:12px;overflow:hidden}
+.log-header{padding:10px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.log-title{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px}
+.log-body{padding:10px 15px;display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto;font-family:var(--mono);font-size:10px}
+.log-line{display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03);animation:logIn .3s ease both}
+@keyframes logIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+.log-time{color:var(--text-3);flex-shrink:0;min-width:54px}
+.log-agent{flex-shrink:0;min-width:80px}
+.log-msg{color:var(--text-2);flex:1}
+.log-tag{flex-shrink:0;font-size:8px;padding:1px 5px;border-radius:3px}
+
+/* ── Onsite visibility cards ── */
+.onsite-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.onsite-card{background:var(--panel);border:1px solid var(--border-md);border-radius:10px;padding:12px;transition:all .15s;cursor:default}
+.onsite-card:hover{border-color:var(--border-bright);transform:translateY(-1px)}
+.onsite-page{font-size:11px;font-weight:600;color:var(--text-1);margin-bottom:4px}
+.onsite-url{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.onsite-status{width:10px;height:10px;border-radius:50%;margin-bottom:6px}
+.onsite-status.green{background:var(--green);box-shadow:0 0 8px var(--green-glow)}
+.onsite-status.amber{background:var(--amber);box-shadow:0 0 8px rgba(245,166,35,.3)}
+.onsite-status.red{background:var(--red);box-shadow:0 0 8px rgba(240,82,82,.3)}
+.onsite-issues{font-size:10px;color:var(--text-3);margin-top:4px;line-height:1.4}
+.onsite-score{font-family:var(--mono);font-size:18px;font-weight:600;margin-top:6px}
+.onsite-score.green{color:var(--green)}
+.onsite-score.amber{color:var(--amber)}
+.onsite-score.red{color:var(--red)}
+
+/* Psych principle chips */
+.psych-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.psych-card{background:var(--panel);border:1px solid var(--border-md);border-radius:10px;padding:12px}
+.psych-name{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.psych-example{font-size:11px;color:var(--text-3);font-style:italic;margin-bottom:8px;line-height:1.4}
+.psych-found{font-family:var(--mono);font-size:10px;font-weight:600}
+.psych-found.yes{color:var(--green)}
+.psych-found.no{color:var(--red)}
+.psych-found.partial{color:var(--amber)}
+.psych-pages{font-size:10px;color:var(--text-3);margin-top:2px}
+
+/* Animations */
+.ch-card{animation:fadeUp .4s ease both}
+.ch-card:nth-child(1){animation-delay:.05s}.ch-card:nth-child(2){animation-delay:.1s}.ch-card:nth-child(3){animation-delay:.15s}
+.ch-card:nth-child(4){animation-delay:.2s}.ch-card:nth-child(5){animation-delay:.25s}.ch-card:nth-child(6){animation-delay:.3s}
+.score-card{animation:fadeUp .35s ease both}
+.score-card:nth-child(1){animation-delay:.02s}.score-card:nth-child(2){animation-delay:.07s}.score-card:nth-child(3){animation-delay:.12s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* Typing cursor blink */
+.cursor{display:inline-block;width:1px;height:.85em;background:var(--green);margin-left:2px;animation:blink .9s step-end infinite;vertical-align:middle}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-bright);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="shell">
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+  </div>
+  <div class="nav-icon" title="Overview">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+  </div>
+  <div class="nav-icon active" title="Comms Intelligence">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </div>
+  <div class="nav-icon" title="Analytics">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+  </div>
+  <div class="nav-icon" title="Members">
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/></svg>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-icon" title="AI Agents">
+    <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+  </div>
+  <div class="nav-icon" title="Settings" style="margin-top:auto">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="hd-left">
+      <div>
+        <div class="hd-eyebrow"><div class="pulse"></div>3 agents active · scanning now</div>
+        <div class="hd-title">Loyalty Comms Intelligence</div>
+        <div class="hd-sub">social_agent · crm_agent · onsite_agent · crawl frequency: 24h</div>
+      </div>
+    </div>
+    <div class="hd-right">
+      <div class="agent-status"><div class="dot"></div>Agents online</div>
+      <div class="last-scan">Last scan: 09:41 AM · Apr 29</div>
+      <button class="btn-scan">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Run scan
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Content ── -->
+  <div class="content">
+
+    <!-- ══ OVERALL SCORES ══ -->
+    <div class="section-label">Overall channel scores <span class="tag">AI-scored · 100pt scale</span></div>
+    <div class="score-overview">
+
+      <!-- Social -->
+      <div class="score-card amber-card">
+        <div class="score-top">
+          <div>
+            <div class="score-agent"><div class="score-agent-dot" style="background:var(--amber)"></div>social_agent · monitoring</div>
+            <div class="score-channel">Social Channels</div>
+          </div>
+          <div class="score-badge amber">Watch</div>
+        </div>
+        <div class="score-num amber">62<span style="font-size:20px;opacity:.5">/100</span></div>
+        <div class="score-label">Moderate loyalty visibility · improving</div>
+        <div class="score-bar-wrap">
+          <div class="score-bar-label"><span>Loyalty mention frequency</span><span style="color:var(--amber)">62%</span></div>
+          <div class="score-bar"><div class="score-bar-fill" style="width:62%;background:var(--amber)"></div></div>
+          <div class="score-pillars">
+            <div class="pillar-row">
+              <div class="pillar-name">Dedicated loyalty posts</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-amber"></div><div class="pillar-dot filled-amber"></div><div class="pillar-dot filled-amber"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Tier upgrade mentions</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-amber"></div><div class="pillar-dot filled-amber"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Referral promotion</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-red"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Traffic from social → loyalty</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-amber"></div><div class="pillar-dot filled-amber"></div><div class="pillar-dot filled-amber"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRM -->
+      <div class="score-card green-card">
+        <div class="score-top">
+          <div>
+            <div class="score-agent"><div class="score-agent-dot" style="background:var(--green);animation:pulse 1.5s ease infinite"></div>crm_agent · monitoring</div>
+            <div class="score-channel">CRM / Email &amp; SMS</div>
+          </div>
+          <div class="score-badge green">Healthy</div>
+        </div>
+        <div class="score-num green">78<span style="font-size:20px;opacity:.5">/100</span></div>
+        <div class="score-label">Strong loyalty comms · minor gaps</div>
+        <div class="score-bar-wrap">
+          <div class="score-bar-label"><span>Loyalty-dedicated send rate</span><span style="color:var(--green)">78%</span></div>
+          <div class="score-bar"><div class="score-bar-fill" style="width:78%;background:var(--green)"></div></div>
+          <div class="score-pillars">
+            <div class="pillar-row">
+              <div class="pillar-name">Welcome loyalty email</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Points balance nudges</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Tier upgrade comms</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Win-back / lapse flows</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-amber"></div><div class="pillar-dot filled-amber"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Onsite -->
+      <div class="score-card red-card">
+        <div class="score-top">
+          <div>
+            <div class="score-agent"><div class="score-agent-dot" style="background:var(--red)"></div>onsite_agent · monitoring</div>
+            <div class="score-channel">Onsite Visibility</div>
+          </div>
+          <div class="score-badge red">At risk</div>
+        </div>
+        <div class="score-num red">41<span style="font-size:20px;opacity:.5">/100</span></div>
+        <div class="score-label">Poor loyalty surface area · action needed</div>
+        <div class="score-bar-wrap">
+          <div class="score-bar-label"><span>Pages with loyalty touchpoints</span><span style="color:var(--red)">41%</span></div>
+          <div class="score-bar"><div class="score-bar-fill" style="width:41%;background:var(--red)"></div></div>
+          <div class="score-pillars">
+            <div class="pillar-row">
+              <div class="pillar-name">Homepage loyalty widget</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">PDP loyalty mentions</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-red"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Cart / checkout nudge</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-amber"></div><div class="pillar-dot filled-amber"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+            <div class="pillar-row">
+              <div class="pillar-name">Account page loyalty hub</div>
+              <div class="pillar-dots">
+                <div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot filled-green"></div><div class="pillar-dot empty"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ SOCIAL CHANNELS ══ -->
+    <div class="section-label">Social channels <span class="tag">social_agent · 6 channels monitored</span></div>
+    <div class="channel-grid">
+
+      <!-- Instagram -->
+      <div class="ch-card">
+        <div class="ch-header">
+          <div class="ch-icon-name">
+            <div class="ch-icon" style="background:rgba(167,139,250,.12);color:var(--purple)">
+              <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div><div class="ch-name">Instagram</div><div class="ch-handle">@brand · 84K followers</div></div>
+          </div>
+          <div class="ch-status-pill" style="background:var(--green-dim);color:var(--green);border:1px solid rgba(34,201,132,.2)"><div class="pip" style="background:var(--green)"></div>Active</div>
+        </div>
+        <div class="agent-crawl">
+          <div class="crawl-tag" style="background:var(--purple-dim);color:var(--purple)">social_agent</div>
+          <div class="crawl-text">Last crawl 09:41 · Scanned 34 posts · Found 6 loyalty mentions · 2 tier upgrade stories detected</div>
+        </div>
+        <div class="ch-metrics">
+          <div class="ch-metric">
+            <div class="ch-metric-label">Loyalty posts (30d)</div>
+            <div><div class="ch-metric-val" style="color:var(--amber)">6 / 28</div><div class="ch-metric-sub">21% of posts mention loyalty</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Traffic → loyalty page</div>
+            <div><div class="ch-metric-val">1,240 sessions</div><div class="ch-metric-sub">↑ 12% vs prev period</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Avg engagement on loyalty posts</div>
+            <div><div class="ch-metric-val" style="color:var(--green)">4.8%</div><div class="ch-metric-sub">vs 2.1% non-loyalty</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Post frequency trend</div>
+            <div class="mini-spark" id="ig-spark"></div>
+          </div>
+        </div>
+        <div class="loyalty-comms">
+          <div class="lc-label">Loyalty content detected</div>
+          <div class="lc-item"><div class="lc-name has">Tier upgrade announcements</div><div class="lc-val">2 posts</div></div>
+          <div class="lc-item"><div class="lc-name partial">Points earning reminders</div><div class="lc-val">3 posts</div></div>
+          <div class="lc-item"><div class="lc-name miss">Referral promotions</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Reward redemption CTAs</div><div class="lc-val">None found</div></div>
+        </div>
+        <div class="traffic-bar-row">
+          <div class="tb-label">Traffic source breakdown</div>
+          <div class="tb-stack">
+            <div class="tb-seg" style="width:52%;background:var(--purple)"></div>
+            <div class="tb-seg" style="width:28%;background:var(--blue)"></div>
+            <div class="tb-seg" style="width:20%;background:var(--bg4)"></div>
+          </div>
+          <div class="tb-legend">
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--purple)"></div>Bio link 52%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--blue)"></div>Stories 28%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--bg4)"></div>Other 20%</div>
+          </div>
+        </div>
+        <div class="ch-footer">
+          <div class="ch-footer-score"><div class="ch-footer-label">Channel score</div><div class="ch-score-val" style="color:var(--amber)">58/100</div></div>
+          <div class="ch-footer-actions">View posts ↗</div>
+        </div>
+      </div>
+
+      <!-- TikTok -->
+      <div class="ch-card">
+        <div class="ch-header">
+          <div class="ch-icon-name">
+            <div class="ch-icon" style="background:rgba(45,212,191,.1);color:var(--teal)">
+              <svg viewBox="0 0 24 24"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+            </div>
+            <div><div class="ch-name">TikTok</div><div class="ch-handle">@brand · 210K followers</div></div>
+          </div>
+          <div class="ch-status-pill" style="background:var(--green-dim);color:var(--green);border:1px solid rgba(34,201,132,.2)"><div class="pip" style="background:var(--green)"></div>Active</div>
+        </div>
+        <div class="agent-crawl">
+          <div class="crawl-tag" style="background:var(--teal-dim);color:var(--teal)">social_agent</div>
+          <div class="crawl-text">Last crawl 09:41 · Scanned 19 videos · 0 loyalty-specific videos found · #loyalty hashtag missing</div>
+        </div>
+        <div class="ch-metrics">
+          <div class="ch-metric">
+            <div class="ch-metric-label">Loyalty posts (30d)</div>
+            <div><div class="ch-metric-val" style="color:var(--red)">0 / 19</div><div class="ch-metric-sub">No loyalty content detected</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Traffic → loyalty page</div>
+            <div><div class="ch-metric-val">312 sessions</div><div class="ch-metric-sub">↓ 8% vs prev period</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Audience loyalty overlap</div>
+            <div><div class="ch-metric-val" style="color:var(--amber)">18%</div><div class="ch-metric-sub">of followers are members</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Post frequency trend</div>
+            <div class="mini-spark" id="tt-spark"></div>
+          </div>
+        </div>
+        <div class="loyalty-comms">
+          <div class="lc-label">Loyalty content detected</div>
+          <div class="lc-item"><div class="lc-name miss">Tier upgrade content</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Points earning videos</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Referral CTAs</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Loyalty hashtags</div><div class="lc-val">None found</div></div>
+        </div>
+        <div class="traffic-bar-row">
+          <div class="tb-label">Traffic source breakdown</div>
+          <div class="tb-stack">
+            <div class="tb-seg" style="width:80%;background:var(--teal)"></div>
+            <div class="tb-seg" style="width:20%;background:var(--bg4)"></div>
+          </div>
+          <div class="tb-legend">
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--teal)"></div>Bio link 80%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--bg4)"></div>Other 20%</div>
+          </div>
+        </div>
+        <div class="ch-footer">
+          <div class="ch-footer-score"><div class="ch-footer-label">Channel score</div><div class="ch-score-val" style="color:var(--red)">22/100</div></div>
+          <div class="ch-footer-actions">View profile ↗</div>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="ch-card">
+        <div class="ch-header">
+          <div class="ch-icon-name">
+            <div class="ch-icon" style="background:var(--blue-dim);color:var(--blue)">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div><div class="ch-name">Email (CRM)</div><div class="ch-handle">Klaviyo · 48K subscribers</div></div>
+          </div>
+          <div class="ch-status-pill" style="background:var(--green-dim);color:var(--green);border:1px solid rgba(34,201,132,.2)"><div class="pip" style="background:var(--green)"></div>Healthy</div>
+        </div>
+        <div class="agent-crawl">
+          <div class="crawl-tag" style="background:var(--blue-dim);color:var(--blue)">crm_agent</div>
+          <div class="crawl-text">Last crawl 09:38 · Analysed 12 flows · 8 loyalty-relevant flows found · Welcome series confirmed active</div>
+        </div>
+        <div class="ch-metrics">
+          <div class="ch-metric">
+            <div class="ch-metric-label">Loyalty emails sent (30d)</div>
+            <div><div class="ch-metric-val" style="color:var(--green)">7 / 14 sends</div><div class="ch-metric-sub">50% include loyalty content</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Avg open rate (loyalty emails)</div>
+            <div><div class="ch-metric-val" style="color:var(--green)">38.4%</div><div class="ch-metric-sub">vs 24.1% non-loyalty</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Click-through → loyalty page</div>
+            <div><div class="ch-metric-val">6,820 sessions</div><div class="ch-metric-sub">↑ 22% vs prev period</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Send frequency trend</div>
+            <div class="mini-spark" id="em-spark"></div>
+          </div>
+        </div>
+        <div class="loyalty-comms">
+          <div class="lc-label">Flows detected</div>
+          <div class="lc-item"><div class="lc-name has">Welcome loyalty onboarding</div><div class="lc-val">Active</div></div>
+          <div class="lc-item"><div class="lc-name has">Points balance reminder</div><div class="lc-val">Active</div></div>
+          <div class="lc-item"><div class="lc-name has">Tier upgrade congratulations</div><div class="lc-val">Active</div></div>
+          <div class="lc-item"><div class="lc-name partial">Win-back / lapse flow</div><div class="lc-val">Partial</div></div>
+        </div>
+        <div class="traffic-bar-row">
+          <div class="tb-label">Email traffic attribution</div>
+          <div class="tb-stack">
+            <div class="tb-seg" style="width:58%;background:var(--blue)"></div>
+            <div class="tb-seg" style="width:28%;background:var(--green)"></div>
+            <div class="tb-seg" style="width:14%;background:var(--bg4)"></div>
+          </div>
+          <div class="tb-legend">
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--blue)"></div>Loyalty CTAs 58%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--green)"></div>Points nudge 28%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--bg4)"></div>Other 14%</div>
+          </div>
+        </div>
+        <div class="ch-footer">
+          <div class="ch-footer-score"><div class="ch-footer-label">Channel score</div><div class="ch-score-val" style="color:var(--green)">82/100</div></div>
+          <div class="ch-footer-actions">View flows ↗</div>
+        </div>
+      </div>
+
+      <!-- SMS -->
+      <div class="ch-card">
+        <div class="ch-header">
+          <div class="ch-icon-name">
+            <div class="ch-icon" style="background:var(--green-dim);color:var(--green)">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div><div class="ch-name">SMS</div><div class="ch-handle">Yotpo SMS · 22K opted-in</div></div>
+          </div>
+          <div class="ch-status-pill" style="background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,.2)"><div class="pip" style="background:var(--amber)"></div>Watch</div>
+        </div>
+        <div class="agent-crawl">
+          <div class="crawl-tag" style="background:var(--green-dim);color:var(--green)">crm_agent</div>
+          <div class="crawl-text">Last crawl 09:38 · Analysed 8 SMS campaigns · 2 loyalty-specific sends · No tier mention in last 45 days</div>
+        </div>
+        <div class="ch-metrics">
+          <div class="ch-metric">
+            <div class="ch-metric-label">Loyalty SMS sent (30d)</div>
+            <div><div class="ch-metric-val" style="color:var(--amber)">2 / 8 sends</div><div class="ch-metric-sub">25% include loyalty content</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Click-through rate</div>
+            <div><div class="ch-metric-val" style="color:var(--green)">14.2%</div><div class="ch-metric-sub">industry avg: 8–12%</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Traffic → loyalty page</div>
+            <div><div class="ch-metric-val">1,840 sessions</div><div class="ch-metric-sub">↓ 3% vs prev period</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Send frequency trend</div>
+            <div class="mini-spark" id="sms-spark"></div>
+          </div>
+        </div>
+        <div class="loyalty-comms">
+          <div class="lc-label">SMS flows detected</div>
+          <div class="lc-item"><div class="lc-name has">Points earned confirmation</div><div class="lc-val">Active</div></div>
+          <div class="lc-item"><div class="lc-name partial">Redemption reminder</div><div class="lc-val">Partial</div></div>
+          <div class="lc-item"><div class="lc-name miss">Tier upgrade SMS</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Referral invite SMS</div><div class="lc-val">None found</div></div>
+        </div>
+        <div class="traffic-bar-row">
+          <div class="tb-label">SMS traffic attribution</div>
+          <div class="tb-stack">
+            <div class="tb-seg" style="width:65%;background:var(--green)"></div>
+            <div class="tb-seg" style="width:35%;background:var(--bg4)"></div>
+          </div>
+          <div class="tb-legend">
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--green)"></div>Direct link 65%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--bg4)"></div>Untracked 35%</div>
+          </div>
+        </div>
+        <div class="ch-footer">
+          <div class="ch-footer-score"><div class="ch-footer-label">Channel score</div><div class="ch-score-val" style="color:var(--amber)">54/100</div></div>
+          <div class="ch-footer-actions">View campaigns ↗</div>
+        </div>
+      </div>
+
+      <!-- Facebook -->
+      <div class="ch-card">
+        <div class="ch-header">
+          <div class="ch-icon-name">
+            <div class="ch-icon" style="background:var(--blue-dim);color:var(--blue)">
+              <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </div>
+            <div><div class="ch-name">Facebook</div><div class="ch-handle">@brand · 31K likes</div></div>
+          </div>
+          <div class="ch-status-pill" style="background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,.2)"><div class="pip" style="background:var(--amber)"></div>Low freq.</div>
+        </div>
+        <div class="agent-crawl">
+          <div class="crawl-tag" style="background:var(--blue-dim);color:var(--blue)">social_agent</div>
+          <div class="crawl-text">Last crawl 09:41 · Scanned 8 posts · 3 loyalty mentions · Low post frequency detected (avg 2/week)</div>
+        </div>
+        <div class="ch-metrics">
+          <div class="ch-metric">
+            <div class="ch-metric-label">Loyalty posts (30d)</div>
+            <div><div class="ch-metric-val" style="color:var(--amber)">3 / 8</div><div class="ch-metric-sub">37% include loyalty content</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Traffic → loyalty page</div>
+            <div><div class="ch-metric-val">880 sessions</div><div class="ch-metric-sub">↑ 4% vs prev period</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Avg reach per loyalty post</div>
+            <div><div class="ch-metric-val">4,200</div><div class="ch-metric-sub">organic only</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Post frequency trend</div>
+            <div class="mini-spark" id="fb-spark"></div>
+          </div>
+        </div>
+        <div class="loyalty-comms">
+          <div class="lc-label">Loyalty content detected</div>
+          <div class="lc-item"><div class="lc-name partial">Tier promotions</div><div class="lc-val">1 post</div></div>
+          <div class="lc-item"><div class="lc-name has">Points earning reminders</div><div class="lc-val">2 posts</div></div>
+          <div class="lc-item"><div class="lc-name miss">Referral program posts</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Member-exclusive offers</div><div class="lc-val">None found</div></div>
+        </div>
+        <div class="traffic-bar-row">
+          <div class="tb-label">Traffic attribution</div>
+          <div class="tb-stack">
+            <div class="tb-seg" style="width:48%;background:var(--blue)"></div>
+            <div class="tb-seg" style="width:34%;background:var(--purple)"></div>
+            <div class="tb-seg" style="width:18%;background:var(--bg4)"></div>
+          </div>
+          <div class="tb-legend">
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--blue)"></div>Posts 48%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--purple)"></div>Paid 34%</div>
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--bg4)"></div>Other 18%</div>
+          </div>
+        </div>
+        <div class="ch-footer">
+          <div class="ch-footer-score"><div class="ch-footer-label">Channel score</div><div class="ch-score-val" style="color:var(--amber)">46/100</div></div>
+          <div class="ch-footer-actions">View page ↗</div>
+        </div>
+      </div>
+
+      <!-- Pinterest -->
+      <div class="ch-card">
+        <div class="ch-header">
+          <div class="ch-icon-name">
+            <div class="ch-icon" style="background:var(--red-dim);color:var(--red)">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.24 2.65 7.86 6.39 9.29-.09-.78-.17-1.98.04-2.83.18-.76 1.22-5.15 1.22-5.15s-.31-.62-.31-1.54c0-1.45.84-2.53 1.88-2.53.89 0 1.32.67 1.32 1.47 0 .89-.57 2.23-.87 3.47-.25 1.04.52 1.88 1.54 1.88 1.85 0 3.28-1.95 3.28-4.77 0-2.49-1.79-4.24-4.34-4.24-2.96 0-4.69 2.22-4.69 4.51 0 .89.34 1.85.77 2.37.08.1.09.19.07.29-.08.31-.25 1.04-.28 1.18-.04.19-.14.23-.32.14-1.25-.58-2.03-2.42-2.03-3.89 0-3.15 2.29-6.05 6.61-6.05 3.47 0 6.16 2.47 6.16 5.77 0 3.44-2.17 6.21-5.18 6.21-1.01 0-1.96-.53-2.29-1.14l-.62 2.33c-.22.87-.83 1.96-1.24 2.62.94.29 1.93.45 2.96.45 5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
+            </div>
+            <div><div class="ch-name">Pinterest</div><div class="ch-handle">@brand · 8K followers</div></div>
+          </div>
+          <div class="ch-status-pill" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(240,82,82,.2)"><div class="pip" style="background:var(--red)"></div>Inactive</div>
+        </div>
+        <div class="agent-crawl">
+          <div class="crawl-tag" style="background:var(--red-dim);color:var(--red)">social_agent</div>
+          <div class="crawl-text">Last crawl 09:41 · Scanned 3 recent pins · Last post: 47 days ago · 0 loyalty mentions · Channel dormant</div>
+        </div>
+        <div class="ch-metrics">
+          <div class="ch-metric">
+            <div class="ch-metric-label">Loyalty posts (30d)</div>
+            <div><div class="ch-metric-val" style="color:var(--red)">0 / 3</div><div class="ch-metric-sub">No loyalty content · dormant</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Traffic → loyalty page</div>
+            <div><div class="ch-metric-val" style="color:var(--red)">42 sessions</div><div class="ch-metric-sub">↓ 61% vs prev period</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Days since last post</div>
+            <div><div class="ch-metric-val" style="color:var(--red)">47 days</div><div class="ch-metric-sub">Recommended: ≤7 days</div></div>
+          </div>
+          <div class="ch-metric">
+            <div class="ch-metric-label">Post frequency trend</div>
+            <div class="mini-spark" id="pi-spark"></div>
+          </div>
+        </div>
+        <div class="loyalty-comms">
+          <div class="lc-label">Loyalty content detected</div>
+          <div class="lc-item"><div class="lc-name miss">Any loyalty content</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Referral pins</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">Member-exclusive boards</div><div class="lc-val">None found</div></div>
+          <div class="lc-item"><div class="lc-name miss">VIP/tier content</div><div class="lc-val">None found</div></div>
+        </div>
+        <div class="traffic-bar-row">
+          <div class="tb-label">Traffic attribution</div>
+          <div class="tb-stack">
+            <div class="tb-seg" style="width:100%;background:var(--bg4)"></div>
+          </div>
+          <div class="tb-legend">
+            <div class="tb-leg-item"><div class="tb-leg-sq" style="background:var(--bg4)"></div>Insufficient data</div>
+          </div>
+        </div>
+        <div class="ch-footer">
+          <div class="ch-footer-score"><div class="ch-footer-label">Channel score</div><div class="ch-score-val" style="color:var(--red)">8/100</div></div>
+          <div class="ch-footer-actions">View profile ↗</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ ONSITE VISIBILITY ══ -->
+    <div class="section-label">Onsite loyalty visibility <span class="tag">onsite_agent · crawling 6 page types</span></div>
+    <div class="onsite-grid">
+      <div class="onsite-card">
+        <div class="onsite-url">/</div>
+        <div class="onsite-status green"></div>
+        <div class="onsite-page">Homepage</div>
+        <div class="onsite-score green">94</div>
+        <div class="onsite-issues">Widget visible above fold. Points balance displayed. Join CTA present.</div>
+      </div>
+      <div class="onsite-card">
+        <div class="onsite-url">/account</div>
+        <div class="onsite-status green"></div>
+        <div class="onsite-page">My Account</div>
+        <div class="onsite-score green">88</div>
+        <div class="onsite-issues">Points hub present. Tier progress shown. Reward history visible.</div>
+      </div>
+      <div class="onsite-card">
+        <div class="onsite-url">/account/register</div>
+        <div class="onsite-status amber"></div>
+        <div class="onsite-page">Create Account</div>
+        <div class="onsite-score amber">61</div>
+        <div class="onsite-issues">Join loyalty mention present but below fold. No points incentive shown at signup.</div>
+      </div>
+      <div class="onsite-card">
+        <div class="onsite-url">/products/*</div>
+        <div class="onsite-status red"></div>
+        <div class="onsite-page">PDPs</div>
+        <div class="onsite-score red">18</div>
+        <div class="onsite-issues" style="color:var(--red);opacity:.8">No loyalty widget on PDPs. No "earn X points" callout. Major visibility gap.</div>
+      </div>
+      <div class="onsite-card">
+        <div class="onsite-url">/cart</div>
+        <div class="onsite-status amber"></div>
+        <div class="onsite-page">Cart</div>
+        <div class="onsite-score amber">52</div>
+        <div class="onsite-issues">Points redemption present but hidden. No "spend $X more to redeem" nudge.</div>
+      </div>
+      <div class="onsite-card">
+        <div class="onsite-url">/nav</div>
+        <div class="onsite-status green"></div>
+        <div class="onsite-page">Navigation</div>
+        <div class="onsite-score green">91</div>
+        <div class="onsite-issues">Loyalty link visible in top nav. Points balance shown for logged-in members.</div>
+      </div>
+    </div>
+
+    <!-- ══ LOYALTY PSYCHOLOGY LANGUAGE AUDIT ══ -->
+    <div class="section-label">Loyalty psychology language audit <span class="tag">onsite_agent + crm_agent · scanning all touchpoints</span></div>
+    <div class="psych-grid">
+      <div class="psych-card">
+        <div class="psych-name">Loss Aversion</div>
+        <div class="psych-example">"Don't miss out" · "Your points expire soon" · "Reward expiring"</div>
+        <div class="psych-found partial">Partial coverage</div>
+        <div class="psych-pages">Found in: email (2 flows) · Not found: onsite, SMS, social</div>
+      </div>
+      <div class="psych-card">
+        <div class="psych-name">Goal Anticipation</div>
+        <div class="psych-example">"Spend $X more to unlock" · "You're X pts from Gold"</div>
+        <div class="psych-found yes">Detected</div>
+        <div class="psych-pages">Found in: email, account page · Not found: cart, PDP, social</div>
+      </div>
+      <div class="psych-card">
+        <div class="psych-name">Artificial Advancement</div>
+        <div class="psych-example">"You're already on your way to Silver" · "Head start unlocked"</div>
+        <div class="psych-found no">Not detected</div>
+        <div class="psych-pages">Not found in any scanned channel or page</div>
+      </div>
+      <div class="psych-card">
+        <div class="psych-name">Positive Reinforcement</div>
+        <div class="psych-example">"Every time you do X, you get Y" · "You earned 120 pts!"</div>
+        <div class="psych-found yes">Detected</div>
+        <div class="psych-pages">Found in: email, SMS confirmations · Partial: account page</div>
+      </div>
+    </div>
+
+    <!-- ══ AI AGENT LOG ══ -->
+    <div class="section-label">AI agent activity log <span class="tag">live feed</span></div>
+    <div class="agent-log">
+      <div class="log-header">
+        <div class="log-title"><div class="pulse"></div>Agent output · real-time</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-3)">auto-refreshing · 24h cycle</div>
+      </div>
+      <div class="log-body" id="agentLog"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+// ── Sparklines ──
+function makeSpark(id, vals, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const max = Math.max(...vals);
+  vals.forEach(v => {
+    const b = document.createElement('div');
+    b.className = 'ms-bar';
+    b.style.height = Math.round((v / max) * 17) + 'px';
+    b.style.background = color;
+    b.style.opacity = v === 0 ? '0.2' : '0.75';
+    el.appendChild(b);
+  });
+}
+makeSpark('ig-spark',  [5,4,6,5,7,6,6,7,8,6], '#A78BFA');
+makeSpark('tt-spark',  [7,8,6,9,8,7,9,8,0,0], '#2DD4BF');
+makeSpark('em-spark',  [3,4,4,5,4,5,6,5,7,7], '#4C9EFF');
+makeSpark('sms-spark', [2,3,2,4,2,3,2,1,2,2], '#22C984');
+makeSpark('fb-spark',  [4,3,3,2,3,2,2,1,2,2], '#4C9EFF');
+makeSpark('pi-spark',  [3,2,1,1,0,1,0,0,0,0], '#F05252');
+
+// ── Agent log ──
+const logLines = [
+  { time: '09:41:22', agent: 'social_agent', msg: 'Instagram scan complete · 34 posts analysed · 6 loyalty mentions found', tag: 'DONE', tagColor: '#22C984' },
+  { time: '09:41:18', agent: 'social_agent', msg: 'TikTok scan complete · 19 videos · 0 loyalty content · flagging gap', tag: 'ALERT', tagColor: '#F05252' },
+  { time: '09:41:09', agent: 'onsite_agent', msg: 'PDP scan: /products/* · No loyalty widget detected on 48 product pages', tag: 'ALERT', tagColor: '#F05252' },
+  { time: '09:40:58', agent: 'onsite_agent', msg: 'Cart page: redemption widget present but z-index conflict detected · partially hidden', tag: 'WARN', tagColor: '#F5A623' },
+  { time: '09:40:44', agent: 'crm_agent',    msg: 'Klaviyo flow audit: welcome series confirmed · win-back flow missing tier mention', tag: 'WARN', tagColor: '#F5A623' },
+  { time: '09:40:31', agent: 'crm_agent',    msg: 'SMS campaign scan: no tier upgrade SMS found in last 45 days · recommending flow', tag: 'ALERT', tagColor: '#F05252' },
+  { time: '09:40:18', agent: 'onsite_agent', msg: 'Homepage: loyalty widget visible above fold · join CTA present · score: 94/100', tag: 'PASS', tagColor: '#22C984' },
+  { time: '09:40:05', agent: 'social_agent', msg: 'Pinterest: last post 47 days ago · channel effectively dormant · flagging', tag: 'ALERT', tagColor: '#F05252' },
+  { time: '09:39:52', agent: 'onsite_agent', msg: 'Psychology audit: "Artificial Advancement" principle not detected on any channel', tag: 'GAP', tagColor: '#F5A623' },
+  { time: '09:39:40', agent: 'crm_agent',    msg: 'Email loyalty open rate 38.4% · significantly above non-loyalty sends (24.1%)', tag: 'PASS', tagColor: '#22C984' },
+  { time: '09:39:28', agent: 'social_agent', msg: 'Instagram loyalty posts get 4.8% engagement vs 2.1% avg · recommend increasing frequency', tag: 'INFO', tagColor: '#4C9EFF' },
+  { time: '09:39:10', agent: 'onsite_agent', msg: 'Create account page: loyalty incentive below fold · estimated 60% of visitors miss it', tag: 'WARN', tagColor: '#F5A623' },
+  { time: '09:38:55', agent: 'crm_agent',    msg: 'SMS opt-in base: 22K subscribers · loyalty SMS CTR 14.2% (above 8–12% benchmark)', tag: 'PASS', tagColor: '#22C984' },
+  { time: '09:38:40', agent: 'social_agent', msg: 'Facebook: 3 loyalty posts detected · referral program never mentioned on channel', tag: 'WARN', tagColor: '#F5A623' },
+  { time: '09:38:20', agent: 'onsite_agent', msg: 'Navigation: loyalty link confirmed in top nav · member balance shown when logged in', tag: 'PASS', tagColor: '#22C984' },
+  { time: '09:38:05', agent: 'crm_agent',    msg: 'Starting CRM flow analysis · connecting to Klaviyo API · 12 flows detected', tag: 'INFO', tagColor: '#4C9EFF' },
+  { time: '09:37:50', agent: 'social_agent', msg: 'Starting social scan · queuing Instagram, TikTok, Facebook, Pinterest, Twitter, YouTube', tag: 'INFO', tagColor: '#4C9EFF' },
+  { time: '09:37:40', agent: 'onsite_agent', msg: 'Starting onsite crawl · headless browser initialised · 6 page types queued', tag: 'INFO', tagColor: '#4C9EFF' },
+];
+
+const logEl = document.getElementById('agentLog');
+const agentColors = { social_agent: '#A78BFA', crm_agent: '#4C9EFF', onsite_agent: '#2DD4BF' };
+
+logLines.forEach((l, i) => {
+  const row = document.createElement('div');
+  row.className = 'log-line';
+  row.style.animationDelay = (i * 0.04) + 's';
+  row.innerHTML = `
+    <span class="log-time">${l.time}</span>
+    <span class="log-agent" style="color:${agentColors[l.agent] || '#8B90A0'}">${l.agent}</span>
+    <span class="log-msg">${l.msg}</span>
+    <span class="log-tag" style="background:${l.tagColor}20;color:${l.tagColor}">${l.tag}</span>
+  `;
+  logEl.appendChild(row);
+});
+</script>
+</body>
+</html>
