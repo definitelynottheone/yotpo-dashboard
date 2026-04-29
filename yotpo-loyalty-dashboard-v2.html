@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yotpo Loyalty Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #F4F3EF;
+  --surface: #FFFFFF;
+  --surface-2: #EFEDE7;
+  --surface-3: #E8E6DF;
+  --border: rgba(0,0,0,0.07);
+  --border-md: rgba(0,0,0,0.12);
+  --border-strong: rgba(0,0,0,0.18);
+  --text-1: #18180F;
+  --text-2: #52524A;
+  --text-3: #9A9A90;
+  --green: #1D9E75;
+  --green-lt: #E1F5EE;
+  --green-dk: #0F6E56;
+  --amber: #EF9F27;
+  --amber-lt: #FEF0D6;
+  --amber-dk: #7A4A08;
+  --red: #E24B4A;
+  --red-lt: #FDEAEA;
+  --red-dk: #8C2222;
+  --blue: #3A7BD5;
+  --blue-lt: #E8F1FC;
+  --blue-dk: #1A4F99;
+  --purple: #7C6FCD;
+  --purple-lt: #EEECFB;
+  --purple-dk: #4A3F99;
+  --teal: #1BA8A8;
+  --teal-lt: #E0F5F5;
+  --teal-dk: #0D6B6B;
+  --r: 12px;
+  --r-sm: 8px;
+  --r-xs: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-1);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ── Shell ── */
+.shell{display:flex;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{width:56px;background:var(--surface);border-right:1px solid var(--border-md);display:flex;flex-direction:column;align-items:center;padding:14px 0 20px;gap:4px;position:sticky;top:0;height:100vh;flex-shrink:0;z-index:20}
+.logo{width:34px;height:34px;background:var(--green);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;flex-shrink:0}
+.logo svg{width:18px;height:18px}
+.nav-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--text-3);cursor:pointer;transition:all .15s;position:relative}
+.nav-icon:hover{background:var(--surface-2);color:var(--text-2)}
+.nav-icon.active{background:var(--green-lt);color:var(--green-dk)}
+.nav-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav-sep{width:28px;height:1px;background:var(--border-md);margin:8px 0}
+
+/* ── Main ── */
+.main{flex:1;overflow-x:hidden;display:flex;flex-direction:column}
+
+/* ── Header ── */
+.header{background:var(--surface);border-bottom:1px solid var(--border-md);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:15}
+.hd-left{display:flex;align-items:center;gap:10px}
+.hd-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.hd-sub{font-size:11px;color:var(--text-3);margin-top:1px}
+.hd-right{display:flex;align-items:center;gap:8px}
+
+/* Segment toggle */
+.seg-toggle{display:flex;background:var(--surface-2);border-radius:9px;padding:3px;gap:2px}
+.seg-btn{padding:5px 13px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-2);transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.seg-btn.active{background:var(--surface);color:var(--text-1);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* Period group */
+.period-group{display:flex;background:var(--surface-2);border-radius:9px;padding:3px;gap:2px}
+.period-btn{padding:5px 10px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-2);transition:all .15s;font-family:'DM Sans',sans-serif}
+.period-btn.active{background:var(--surface);color:var(--text-1);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+.btn-export{padding:6px 13px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:var(--green);color:white;font-family:'DM Sans',sans-serif;transition:background .15s;display:flex;align-items:center;gap:5px}
+.btn-export:hover{background:var(--green-dk)}
+.btn-export svg{width:12px;height:12px;stroke:white;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* ── Content ── */
+.content{padding:20px 24px 32px;flex:1}
+
+/* ── Alert ── */
+.alert{background:var(--amber-lt);border:1px solid #FAC96B;border-radius:var(--r-sm);padding:10px 14px;display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;animation:slideDown .3s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.alert-icon{width:18px;height:18px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:9px;color:white;font-weight:700}
+.alert-text{font-size:12px;color:var(--amber-dk);line-height:1.55}
+.alert-text strong{font-weight:600}
+.alert-close{margin-left:auto;cursor:pointer;color:var(--amber-dk);font-size:18px;line-height:1;opacity:.5;flex-shrink:0;background:none;border:none;padding:0;font-family:inherit}
+.alert-close:hover{opacity:1}
+
+/* ── Section label ── */
+.section-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;margin-top:22px;display:flex;align-items:center;gap:8px}
+.section-label:first-of-type{margin-top:0}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border-md)}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border-md);border-radius:var(--r);padding:16px;transition:box-shadow .15s}
+.card:hover{box-shadow:0 3px 12px rgba(0,0,0,.06)}
+.card-title{font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--text-3);margin-bottom:14px}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between}
+
+/* ── Incremental Revenue & Behavioral ── */
+.impact-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+
+.impact-card{background:var(--surface);border:1px solid var(--border-md);border-radius:var(--r);padding:0;overflow:hidden}
+.impact-top{padding:16px;border-bottom:1px solid var(--border)}
+.impact-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.impact-label-dot{width:7px;height:7px;border-radius:50%}
+.impact-big{font-size:32px;font-weight:600;letter-spacing:-.03em;line-height:1;margin-bottom:4px}
+.impact-big.green{color:var(--green-dk)}
+.impact-change{font-size:12px;font-weight:500;display:flex;align-items:center;gap:4px}
+.impact-change.up{color:var(--green-dk)}
+.impact-change.dn{color:var(--red-dk)}
+.impact-change.neu{color:var(--amber-dk)}
+.impact-vs{font-size:10px;color:var(--text-3);margin-top:2px}
+
+.impact-rows{padding:12px 16px;display:flex;flex-direction:column;gap:0}
+.impact-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
+.impact-row:last-child{border-bottom:none}
+.impact-row-label{font-size:12px;color:var(--text-2)}
+.impact-row-label small{display:block;font-size:10px;color:var(--text-3)}
+.impact-row-val{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text-1);text-align:right}
+.impact-row-val small{display:block;font-size:10px;color:var(--text-3);font-weight:400;font-family:'DM Sans',sans-serif;text-align:right}
+
+.impact-footer{padding:10px 16px;background:var(--surface-2);display:flex;gap:20px}
+.impact-footer-item{font-size:11px;color:var(--text-2)}
+.impact-footer-item strong{font-weight:600;color:var(--text-1)}
+
+/* Revenue breakdown bar */
+.rev-breakdown{padding:12px 16px;border-top:1px solid var(--border)}
+.rev-breakdown-label{font-size:11px;color:var(--text-2);margin-bottom:6px}
+.rev-bar-stack{height:10px;border-radius:5px;display:flex;overflow:hidden;gap:2px;margin-bottom:8px}
+.rev-bar-seg{height:100%;border-radius:3px}
+.rev-legend{display:flex;flex-wrap:wrap;gap:10px}
+.rev-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-2)}
+.rev-legend-sq{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* ── KPI row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}
+.kpi{background:var(--surface);border:1px solid var(--border-md);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;cursor:default}
+.kpi:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.07)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.green::after{background:var(--green)}
+.kpi.amber::after{background:var(--amber)}
+.kpi.red::after{background:var(--red)}
+.kpi.blue::after{background:var(--blue)}
+.kpi-label{font-size:11px;color:var(--text-2);margin-bottom:6px}
+.kpi-val{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1;margin-bottom:5px}
+.kpi-change{font-size:11px;font-weight:500;display:flex;align-items:center;gap:3px}
+.kpi-change.up{color:var(--green-dk)}
+.kpi-change.dn{color:var(--red-dk)}
+.kpi-change.neu{color:var(--amber-dk)}
+.kpi-vs{font-size:10px;color:var(--text-3);margin-top:2px}
+.status-pip{width:8px;height:8px;border-radius:50%;position:absolute;top:14px;right:14px;margin-top:3px}
+.status-pip.green{background:var(--green);box-shadow:0 0 0 3px var(--green-lt)}
+.status-pip.amber{background:var(--amber);box-shadow:0 0 0 3px var(--amber-lt)}
+.status-pip.red{background:var(--red);box-shadow:0 0 0 3px var(--red-lt)}
+.status-pip.blue{background:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
+
+/* Comparison chip */
+.comp-chip{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;border:1px solid;display:inline-flex;align-items:center;gap:3px;margin-top:4px}
+.comp-chip.better{background:var(--green-lt);color:var(--green-dk);border-color:#9FE1CB}
+.comp-chip.worse{background:var(--red-lt);color:var(--red-dk);border-color:#F7C1C1}
+.comp-chip.watch{background:var(--amber-lt);color:var(--amber-dk);border-color:#FAC96B}
+
+/* ── Trends chart ── */
+.trend-grid{display:grid;grid-template-columns:1.9fr 1fr;gap:10px;margin-bottom:10px}
+.legend-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2)}
+.legend-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.chart-wrap{position:relative}
+.proj-note{font-size:10px;color:var(--text-3);font-style:italic;margin-top:8px}
+
+/* ── Tier bars ── */
+.tier-row{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.tier-name{font-size:12px;color:var(--text-2);min-width:56px}
+.tier-bar-bg{flex:1;height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.tier-bar{height:100%;border-radius:4px;transition:width .9s cubic-bezier(.16,1,.3,1)}
+.tier-pct{font-size:12px;font-weight:600;color:var(--text-1);min-width:30px;text-align:right;font-family:'DM Mono',monospace}
+.tier-count{font-size:10px;color:var(--text-3);min-width:42px;text-align:right;font-family:'DM Mono',monospace}
+.upgrades-strip{border-top:1px solid var(--border);padding-top:10px;margin-top:2px}
+.upgrade-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:6px}
+.upgrades{display:flex;flex-wrap:wrap;gap:8px}
+.upgrade-item{font-size:11px;color:var(--text-2);background:var(--surface-2);border-radius:6px;padding:3px 8px}
+.upgrade-item strong{color:var(--green-dk);font-weight:600}
+
+/* ── Bottom grid ── */
+.bottom-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+
+/* Donut */
+.donut-wrap{position:relative;height:120px;margin-bottom:10px}
+.redeem-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.redeem-row:last-child{border-bottom:none}
+.redeem-name{color:var(--text-1);display:flex;align-items:center;gap:6px}
+.redeem-right{display:flex;align-items:center;gap:6px}
+.redeem-pct{font-weight:600;font-family:'DM Mono',monospace;font-size:13px;color:var(--text-1)}
+
+/* Badge */
+.badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.badge.green{background:var(--green-lt);color:var(--green-dk)}
+.badge.amber{background:var(--amber-lt);color:var(--amber-dk)}
+.badge.red{background:var(--red-lt);color:var(--red-dk)}
+.badge.blue{background:var(--blue-lt);color:var(--blue-dk)}
+.badge.purple{background:var(--purple-lt);color:var(--purple-dk)}
+
+/* Cohort table */
+.cohort-table{width:100%;border-collapse:collapse;font-size:12px}
+.cohort-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);text-align:left;padding:0 6px 8px 0;border-bottom:1px solid var(--border)}
+.cohort-table td{padding:7px 6px 7px 0;border-bottom:1px solid var(--border);color:var(--text-1);vertical-align:middle}
+.cohort-table tr:last-child td{border-bottom:none}
+
+/* Sparkline */
+.spark{display:flex;align-items:flex-end;gap:2px;height:22px}
+.spark-bar{width:5px;border-radius:2px;transition:height .3s ease}
+
+/* Benchmark */
+.bench-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.bench-item:last-child{border-bottom:none}
+.bench-left .bench-name{font-size:12px;font-weight:500;color:var(--text-1)}
+.bench-left .bench-avg{font-size:10px;color:var(--text-3);margin-top:2px}
+.bench-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.bench-val{font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text-1)}
+.bench-bar-wrap{width:90px;height:5px;background:var(--surface-2);border-radius:3px;position:relative}
+.bench-bar-fill{height:100%;border-radius:3px}
+.bench-marker{position:absolute;top:-3px;width:2px;height:11px;background:var(--border-strong);border-radius:1px}
+
+/* Non-ALM comparison */
+.non-alm-compare{background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-top:12px}
+.non-alm-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:8px}
+.non-alm-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px}
+.non-alm-label{color:var(--text-2)}
+.non-alm-vals{display:flex;gap:12px;align-items:center}
+.non-alm-alm{font-weight:600;color:var(--text-1);font-family:'DM Mono',monospace}
+.non-alm-nonalm{color:var(--text-3);font-family:'DM Mono',monospace}
+
+/* Data refresh note */
+.data-note{font-size:10px;color:var(--text-3);background:var(--surface-2);border-radius:6px;padding:6px 10px;margin-top:20px;display:flex;align-items:center;gap:6px}
+.data-note svg{width:12px;height:12px;stroke:var(--text-3);fill:none;stroke-width:2;flex-shrink:0}
+
+/* Animations */
+.kpi{animation:fadeUp .35s ease both}
+.kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}.kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}
+.impact-card{animation:fadeUp .4s ease both}.impact-card:nth-child(1){animation-delay:.1s}.impact-card:nth-child(2){animation-delay:.18s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── Divider label ── */
+.view-badge{display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);color:var(--green-dk);font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-bottom:14px}
+.view-badge.redeemer{background:var(--blue-lt);color:var(--blue-dk)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+  </div>
+  <div class="nav-icon active" title="Analytics">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+  </div>
+  <div class="nav-icon" title="Members">
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/></svg>
+  </div>
+  <div class="nav-icon" title="Rewards">
+    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+  </div>
+  <div class="nav-icon" title="Referrals">
+    <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-icon" title="Reports">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+  </div>
+  <div class="nav-icon" title="Settings" style="margin-top:auto">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="hd-left">
+      <div>
+        <div class="hd-title">Loyalty &amp; Referrals Analytics</div>
+        <div class="hd-sub">Refreshed daily at 2:00 AM EST · Apr 29, 2026 · All values in USD</div>
+      </div>
+    </div>
+    <div class="hd-right">
+      <!-- Segment toggle -->
+      <div class="seg-toggle" id="segToggle">
+        <button class="seg-btn active" data-seg="alm" onclick="switchSeg('alm')">Active Loyalty Members</button>
+        <button class="seg-btn" data-seg="redeemer" onclick="switchSeg('redeemer')">Redeemers</button>
+      </div>
+      <!-- Period -->
+      <div class="period-group" id="periodGroup">
+        <button class="period-btn active" onclick="switchPeriod(this,'30d')">30d</button>
+        <button class="period-btn" onclick="switchPeriod(this,'90d')">90d</button>
+        <button class="period-btn" onclick="switchPeriod(this,'365d')">365d</button>
+        <button class="period-btn" onclick="switchPeriod(this,'lq')">Last Q</button>
+        <button class="period-btn" onclick="switchPeriod(this,'ly')">Last Y</button>
+      </div>
+      <button class="btn-export">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Content ── -->
+  <div class="content">
+
+    <!-- Alert -->
+    <div class="alert" id="alertBar">
+      <div class="alert-icon">!</div>
+      <div class="alert-text">
+        <strong>2 items need attention:</strong> Redemption rate (11%) is below industry avg of 15% — customers may not be discovering the rewards widget. Average points balance (1,240) is high vs benchmark (900), indicating points hoarding risk. Consider a limited-time bonus redemption campaign.
+      </div>
+      <button class="alert-close" onclick="this.closest('.alert').remove()">×</button>
+    </div>
+
+    <!-- ══ SEGMENT VIEW LABEL ══ -->
+    <div id="segLabel" class="view-badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+      Active Loyalty Members (ALM) view — last 30 days
+    </div>
+
+    <!-- ══ IMPACT CARDS: Incremental Revenue + Behavioral ══ -->
+    <div class="impact-grid">
+
+      <!-- Incremental Revenue Card -->
+      <div class="impact-card">
+        <div class="impact-top">
+          <div class="impact-label">
+            <div class="impact-label-dot" style="background:var(--green)"></div>
+            Incremental revenue
+          </div>
+          <div class="impact-big green">$934,491</div>
+          <div class="impact-change up">↑ 18.4% year-over-year</div>
+          <div class="impact-vs">vs same period last year</div>
+        </div>
+
+        <div class="impact-rows">
+          <div class="impact-row">
+            <div class="impact-row-label">
+              Avg revenue / ALM
+              <small>ALM segment</small>
+            </div>
+            <div class="impact-row-val">
+              $87.90
+              <small>Non-ALM: $73.65</small>
+            </div>
+          </div>
+          <div class="impact-row">
+            <div class="impact-row-label">
+              Incremental rev / customer
+              <small>ALM minus Non-ALM avg</small>
+            </div>
+            <div class="impact-row-val">$14.25</div>
+          </div>
+          <div class="impact-row">
+            <div class="impact-row-label">
+              ALM customers in period
+            </div>
+            <div class="impact-row-val">65,578</div>
+          </div>
+          <div class="impact-row">
+            <div class="impact-row-label">
+              Total incremental revenue
+              <small>$14.25 × 65,578</small>
+            </div>
+            <div class="impact-row-val">$934,491</div>
+          </div>
+        </div>
+
+        <!-- Revenue breakdown bar -->
+        <div class="rev-breakdown">
+          <div class="rev-breakdown-label">Revenue breakdown — ALM segment</div>
+          <div class="rev-bar-stack">
+            <div class="rev-bar-seg" style="width:38%;background:var(--green);"></div>
+            <div class="rev-bar-seg" style="width:56%;background:var(--teal);"></div>
+            <div class="rev-bar-seg" style="width:6%;background:var(--surface-3);"></div>
+          </div>
+          <div class="rev-legend">
+            <div class="rev-legend-item"><div class="rev-legend-sq" style="background:var(--green)"></div>With rewards ($2.18M)</div>
+            <div class="rev-legend-item"><div class="rev-legend-sq" style="background:var(--teal)"></div>Other purchases ($3.59M)</div>
+          </div>
+        </div>
+
+        <div class="impact-footer">
+          <div class="impact-footer-item">Total store revenue: <strong>$5.77M</strong></div>
+          <div class="impact-footer-item">Loyalty revenue share: <strong style="color:var(--green-dk)">16.2%</strong></div>
+        </div>
+      </div>
+
+      <!-- Behavioral / Participation Card -->
+      <div class="impact-card">
+        <div class="impact-top">
+          <div class="impact-label">
+            <div class="impact-label-dot" style="background:var(--blue)"></div>
+            Participation rate
+          </div>
+          <div class="impact-big" style="color:var(--blue-dk)">34.1%</div>
+          <div class="impact-change up">↑ 3.2 pts year-over-year</div>
+          <div class="impact-vs">of total customers are ALMs</div>
+        </div>
+
+        <div class="impact-rows">
+          <div class="impact-row">
+            <div class="impact-row-label">
+              Total ALM customers
+            </div>
+            <div class="impact-row-val">65,578</div>
+          </div>
+          <div class="impact-row">
+            <div class="impact-row-label">
+              Avg order value (AOV)
+              <small>ALM vs Non-ALM</small>
+            </div>
+            <div class="impact-row-val">
+              $96.40
+              <small>Non-ALM: $79.80</small>
+            </div>
+          </div>
+          <div class="impact-row">
+            <div class="impact-row-label">
+              Repeat purchase rate (RPR)
+              <small>2+ orders in period</small>
+            </div>
+            <div class="impact-row-val">
+              61.3%
+              <small>Non-ALM: 38.7%</small>
+            </div>
+          </div>
+          <div class="impact-row">
+            <div class="impact-row-label">
+              Avg orders / customer
+            </div>
+            <div class="impact-row-val">
+              3.6×
+              <small>Non-ALM: 1.9×</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="non-alm-compare">
+          <div class="non-alm-title">ALM vs Non-ALM at a glance</div>
+          <div class="non-alm-row">
+            <div class="non-alm-label">Metric</div>
+            <div class="non-alm-vals">
+              <span style="font-size:10px;font-weight:600;color:var(--green-dk)">ALM</span>
+              <span style="font-size:10px;color:var(--text-3)">Non-ALM</span>
+            </div>
+          </div>
+          <div class="non-alm-row">
+            <div class="non-alm-label">AOV</div>
+            <div class="non-alm-vals"><span class="non-alm-alm">$96.40</span><span class="non-alm-nonalm">$79.80</span></div>
+          </div>
+          <div class="non-alm-row">
+            <div class="non-alm-label">RPR</div>
+            <div class="non-alm-vals"><span class="non-alm-alm">61.3%</span><span class="non-alm-nonalm">38.7%</span></div>
+          </div>
+          <div class="non-alm-row">
+            <div class="non-alm-label">Avg orders</div>
+            <div class="non-alm-vals"><span class="non-alm-alm">3.6×</span><span class="non-alm-nonalm">1.9×</span></div>
+          </div>
+          <div class="non-alm-row">
+            <div class="non-alm-label">Rev / customer</div>
+            <div class="non-alm-vals"><span class="non-alm-alm">$87.90</span><span class="non-alm-nonalm">$73.65</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ CORE BEHAVIORAL KPIs ══ -->
+    <div class="section-label">Core program metrics — ALM segment</div>
+    <div class="kpi-row">
+      <div class="kpi green">
+        <div class="status-pip green"></div>
+        <div class="kpi-label">Average order value (AOV)</div>
+        <div class="kpi-val">$96.40</div>
+        <div class="kpi-change up">↑ 7.2% vs prev period</div>
+        <div class="kpi-vs">Non-ALM: $79.80</div>
+        <div class="comp-chip better">+20.8% vs non-members</div>
+      </div>
+      <div class="kpi green">
+        <div class="status-pip green"></div>
+        <div class="kpi-label">Repeat purchase rate (RPR)</div>
+        <div class="kpi-val">61.3%</div>
+        <div class="kpi-change up">↑ 5.1 pts vs prev period</div>
+        <div class="kpi-vs">Non-ALM: 38.7%</div>
+        <div class="comp-chip better">+22.6 pts vs non-members</div>
+      </div>
+      <div class="kpi blue">
+        <div class="status-pip blue"></div>
+        <div class="kpi-label">Avg orders per customer</div>
+        <div class="kpi-val">3.6×</div>
+        <div class="kpi-change up">↑ 9.1% vs prev period</div>
+        <div class="kpi-vs">Non-ALM: 1.9×</div>
+        <div class="comp-chip better">1.9× more purchases</div>
+      </div>
+      <div class="kpi amber">
+        <div class="status-pip amber"></div>
+        <div class="kpi-label">Redemption rate</div>
+        <div class="kpi-val">11.0%</div>
+        <div class="kpi-change dn">↓ 4.2 pts vs prev period</div>
+        <div class="kpi-vs">Industry avg: 15%</div>
+        <div class="comp-chip worse">Below industry avg</div>
+      </div>
+    </div>
+
+    <!-- ══ TRENDS + TIERS ══ -->
+    <div class="section-label">Performance trends &amp; tier breakdown</div>
+    <div class="trend-grid">
+
+      <!-- Trend chart -->
+      <div class="card">
+        <div class="card-title">Program performance over time</div>
+        <div class="card-sub">9-month actuals + 60-day model projection (dashed) — YoY comparison enabled</div>
+        <div class="legend-row">
+          <div class="legend-item"><div class="legend-sq" style="background:#1D9E75"></div>ALM count (×100)</div>
+          <div class="legend-item"><div class="legend-sq" style="background:#3A7BD5"></div>Redemption rate %</div>
+          <div class="legend-item"><div class="legend-sq" style="background:#BA7517"></div>Loyalty rev $K</div>
+          <div class="legend-item" style="opacity:.55"><div class="legend-sq" style="background:#1D9E75;outline:2px dashed #1D9E75;outline-offset:1px"></div>Forecast</div>
+        </div>
+        <div class="chart-wrap" style="height:180px">
+          <canvas id="trendChart" role="img" aria-label="Line chart: members, redemption rate, loyalty revenue over 9 months with 60-day forecast">Trend data</canvas>
+        </div>
+        <div class="proj-note">Dashed = 60-day projection based on 30-day trend. All YoY changes vs same period last year.</div>
+      </div>
+
+      <!-- Tier breakdown -->
+      <div class="card">
+        <div class="card-title">Loyalty tier breakdown</div>
+        <div class="card-sub">Member distribution + upgrades this period</div>
+        <div class="tier-row">
+          <div class="tier-name">Bronze</div>
+          <div class="tier-bar-bg"><div class="tier-bar" style="width:58%;background:#B4B2A9"></div></div>
+          <div class="tier-pct">58%</div>
+          <div class="tier-count">28,025</div>
+        </div>
+        <div class="tier-row">
+          <div class="tier-name">Silver</div>
+          <div class="tier-bar-bg"><div class="tier-bar" style="width:26%;background:#85B7EB"></div></div>
+          <div class="tier-pct">26%</div>
+          <div class="tier-count">12,563</div>
+        </div>
+        <div class="tier-row">
+          <div class="tier-name">Gold</div>
+          <div class="tier-bar-bg"><div class="tier-bar" style="width:12%;background:#EF9F27"></div></div>
+          <div class="tier-pct">12%</div>
+          <div class="tier-count">5,798</div>
+        </div>
+        <div class="tier-row">
+          <div class="tier-name">Platinum</div>
+          <div class="tier-bar-bg"><div class="tier-bar" style="width:4%;background:#7C6FCD"></div></div>
+          <div class="tier-pct">4%</div>
+          <div class="tier-count">1,934</div>
+        </div>
+        <div class="upgrades-strip">
+          <div class="upgrade-label">Tier upgrades this period</div>
+          <div class="upgrades">
+            <div class="upgrade-item">Bronze → Silver <strong>+342</strong></div>
+            <div class="upgrade-item">Silver → Gold <strong>+87</strong></div>
+            <div class="upgrade-item">Gold → Plat <strong>+21</strong></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ BOTTOM ROW: Redemptions + Cohorts + Benchmarks ══ -->
+    <div class="section-label">Redemptions · Customer cohorts · Benchmarks</div>
+    <div class="bottom-grid">
+
+      <!-- Redemption breakdown -->
+      <div class="card">
+        <div class="card-title">Redemption breakdown</div>
+        <div class="card-sub">By reward type — tracked redemptions only</div>
+        <div class="donut-wrap">
+          <canvas id="redeemChart" role="img" aria-label="Donut chart: redemption split by reward type">Redemption types</canvas>
+        </div>
+        <div class="redeem-row">
+          <div class="redeem-name"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#1D9E75"></span>Checkout discount</div>
+          <div class="redeem-right"><span class="redeem-pct">48%</span><span class="badge green">Top</span></div>
+        </div>
+        <div class="redeem-row">
+          <div class="redeem-name"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#3A7BD5"></span>Free shipping</div>
+          <div class="redeem-right"><span class="redeem-pct">27%</span></div>
+        </div>
+        <div class="redeem-row">
+          <div class="redeem-name"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#EF9F27"></span>Referral reward</div>
+          <div class="redeem-right"><span class="redeem-pct">14%</span><span class="badge amber">Watch</span></div>
+        </div>
+        <div class="redeem-row">
+          <div class="redeem-name"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#7C6FCD"></span>Free product</div>
+          <div class="redeem-right"><span class="redeem-pct">11%</span></div>
+        </div>
+        <div style="margin-top:10px;font-size:10px;color:var(--text-3);font-style:italic">Note: untracked/API-based redemptions are excluded per Yotpo methodology.</div>
+      </div>
+
+      <!-- Cohort impact -->
+      <div class="card">
+        <div class="card-title">Customer cohort impact</div>
+        <div class="card-sub">Engagement &amp; conversion by order history</div>
+        <table class="cohort-table">
+          <thead>
+            <tr>
+              <th>Cohort</th>
+              <th>Members</th>
+              <th>Earn %</th>
+              <th>Conv.</th>
+              <th>Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1st order</td>
+              <td style="font-family:'DM Mono',monospace;font-size:11px">12,840</td>
+              <td>41%</td>
+              <td><span class="badge amber">22%</span></td>
+              <td><div class="spark" id="spark1"></div></td>
+            </tr>
+            <tr>
+              <td>2–5 orders</td>
+              <td style="font-family:'DM Mono',monospace;font-size:11px">18,920</td>
+              <td>68%</td>
+              <td><span class="badge green">61%</span></td>
+              <td><div class="spark" id="spark2"></div></td>
+            </tr>
+            <tr>
+              <td>6–10 orders</td>
+              <td style="font-family:'DM Mono',monospace;font-size:11px">9,410</td>
+              <td>82%</td>
+              <td><span class="badge green">74%</span></td>
+              <td><div class="spark" id="spark3"></div></td>
+            </tr>
+            <tr>
+              <td>10+ orders</td>
+              <td style="font-family:'DM Mono',monospace;font-size:11px">7,150</td>
+              <td>91%</td>
+              <td><span class="badge green">88%</span></td>
+              <td><div class="spark" id="spark4"></div></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:12px;background:var(--amber-lt);border-radius:8px;padding:9px 11px;font-size:11px;color:var(--amber-dk)">
+          <strong>Insight:</strong> 1st-order cohort has only 41% earn rule engagement. Improving onboarding nudges and welcome reward visibility could lift this significantly — note: earning points alone does not count as ALM activity.
+        </div>
+      </div>
+
+      <!-- Benchmarks -->
+      <div class="card">
+        <div class="card-title">Benchmarks vs industry</div>
+        <div class="card-sub">Loyalty ecommerce industry averages</div>
+        <div class="bench-item">
+          <div class="bench-left">
+            <div class="bench-name">Opt-in rate</div>
+            <div class="bench-avg">Industry avg: 31%</div>
+          </div>
+          <div class="bench-right">
+            <div style="display:flex;align-items:center;gap:6px"><div class="bench-val">34.1%</div><span class="badge green">Above</span></div>
+            <div class="bench-bar-wrap"><div class="bench-bar-fill" style="width:72%;background:var(--green)"></div><div class="bench-marker" style="left:65%"></div></div>
+          </div>
+        </div>
+        <div class="bench-item">
+          <div class="bench-left">
+            <div class="bench-name">Redemption rate</div>
+            <div class="bench-avg">Industry avg: 15%</div>
+          </div>
+          <div class="bench-right">
+            <div style="display:flex;align-items:center;gap:6px"><div class="bench-val">11.0%</div><span class="badge red">Below</span></div>
+            <div class="bench-bar-wrap"><div class="bench-bar-fill" style="width:44%;background:var(--red)"></div><div class="bench-marker" style="left:60%"></div></div>
+          </div>
+        </div>
+        <div class="bench-item">
+          <div class="bench-left">
+            <div class="bench-name">Avg points balance</div>
+            <div class="bench-avg">Industry avg: 900 pts</div>
+          </div>
+          <div class="bench-right">
+            <div style="display:flex;align-items:center;gap:6px"><div class="bench-val">1,240</div><span class="badge amber">Hoard</span></div>
+            <div class="bench-bar-wrap"><div class="bench-bar-fill" style="width:88%;background:var(--amber)"></div><div class="bench-marker" style="left:64%"></div></div>
+          </div>
+        </div>
+        <div class="bench-item">
+          <div class="bench-left">
+            <div class="bench-name">Purchase frequency</div>
+            <div class="bench-avg">Industry avg: 3.1×</div>
+          </div>
+          <div class="bench-right">
+            <div style="display:flex;align-items:center;gap:6px"><div class="bench-val">3.6×</div><span class="badge green">Above</span></div>
+            <div class="bench-bar-wrap"><div class="bench-bar-fill" style="width:76%;background:var(--green)"></div><div class="bench-marker" style="left:65%"></div></div>
+          </div>
+        </div>
+        <div class="bench-item">
+          <div class="bench-left">
+            <div class="bench-name">Referral conversion</div>
+            <div class="bench-avg">Industry avg: 8%</div>
+          </div>
+          <div class="bench-right">
+            <div style="display:flex;align-items:center;gap:6px"><div class="bench-val">6.2%</div><span class="badge amber">Watch</span></div>
+            <div class="bench-bar-wrap"><div class="bench-bar-fill" style="width:50%;background:var(--amber)"></div><div class="bench-marker" style="left:65%"></div></div>
+          </div>
+        </div>
+        <div class="bench-item">
+          <div class="bench-left">
+            <div class="bench-name">Repeat purchase rate</div>
+            <div class="bench-avg">Industry avg: 42%</div>
+          </div>
+          <div class="bench-right">
+            <div style="display:flex;align-items:center;gap:6px"><div class="bench-val">61.3%</div><span class="badge green">Above</span></div>
+            <div class="bench-bar-wrap"><div class="bench-bar-fill" style="width:80%;background:var(--green)"></div><div class="bench-marker" style="left:55%"></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Data note -->
+    <div class="data-note">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Data refreshes daily at 2:00 AM EST. Revenue in store base currency (USD). Untracked/API-based redemptions excluded from all ALM and Redeemer metrics. YoY = same period vs prior year. Projections are model estimates only.
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+// ── Segment toggle ──
+const segData = {
+  alm: {
+    label: 'Active Loyalty Members (ALM) view',
+    badgeClass: 'view-badge',
+    impBig: '$934,491',
+    impBigColor: 'var(--green-dk)',
+    impChange: '↑ 18.4% year-over-year',
+    impChangeClass: 'up',
+    partRate: '34.1%',
+    partRateColor: 'var(--blue-dk)',
+    partChange: '↑ 3.2 pts year-over-year',
+    partVs: 'of total customers are ALMs',
+    sectionLabel: 'Core program metrics — ALM segment',
+    aov: '$96.40', aovVs: 'Non-ALM: $79.80', aovComp: '+20.8% vs non-members', aovCompClass: 'better',
+    rpr: '61.3%', rprVs: 'Non-ALM: 38.7%', rprComp: '+22.6 pts vs non-members', rprCompClass: 'better',
+    orders: '3.6×', ordersVs: 'Non-ALM: 1.9×', ordersComp: '1.9× more purchases', ordersCompClass: 'better',
+    redeem: '11.0%', redeemVs: 'Industry avg: 15%', redeemComp: 'Below industry avg', redeemCompClass: 'worse',
+    periods: ['30d','90d','365d','Last Q','Last Y']
+  },
+  redeemer: {
+    label: 'Redeemers view',
+    badgeClass: 'view-badge redeemer',
+    impBig: '$427,210',
+    impBigColor: 'var(--blue-dk)',
+    impChange: '↑ 12.1% year-over-year',
+    impChangeClass: 'up',
+    partRate: '11.0%',
+    partRateColor: 'var(--blue-dk)',
+    partChange: '↓ 4.2 pts vs prev period',
+    partVs: 'of customers redeemed a reward',
+    sectionLabel: 'Core program metrics — Redeemers segment',
+    aov: '$108.20', aovVs: 'Non-Redeemer: $81.40', aovComp: '+32.9% vs non-redeemers', aovCompClass: 'better',
+    rpr: '74.8%', rprVs: 'Non-Redeemer: 36.2%', rprComp: '+38.6 pts vs non-redeemers', rprCompClass: 'better',
+    orders: '4.1×', ordersVs: 'Non-Redeemer: 1.7×', ordersComp: '2.4× more purchases', ordersCompClass: 'better',
+    redeem: '11.0%', redeemVs: 'Industry avg: 15%', redeemComp: 'Below industry avg', redeemCompClass: 'worse',
+    periods: ['90d','365d','Last Q','Last Y']
+  }
+};
+
+function switchSeg(seg) {
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.seg === seg));
+  const d = segData[seg];
+  const label = document.getElementById('segLabel');
+  label.className = d.badgeClass;
+  label.innerHTML = (seg === 'alm'
+    ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>'
+    : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>')
+    + ' ' + d.label + ' — last 30 days';
+}
+
+// ── Period toggle ──
+function switchPeriod(btn, period) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Trend chart ──
+const allLabels = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'];
+const membersAct = [320,335,348,362,378,392,411,432,448,null,null];
+const membersFC  = [null,null,null,null,null,null,null,null,448,465,483];
+const redeemAct  = [15.2,14.8,14.1,13.5,13.0,12.8,12.1,11.4,11.0,null,null];
+const redeemFC   = [null,null,null,null,null,null,null,null,11.0,10.6,10.3];
+const revAct     = [98,107,118,129,138,152,163,174,182,null,null];
+const revFC      = [null,null,null,null,null,null,null,null,182,196,212];
+
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: allLabels,
+    datasets: [
+      { label:'Members ×100', data:membersAct, borderColor:'#1D9E75', backgroundColor:'rgba(29,158,117,.06)', borderWidth:2, pointRadius:3, pointBackgroundColor:'#1D9E75', tension:.4, fill:false, yAxisID:'y' },
+      { label:'Members forecast', data:membersFC, borderColor:'#1D9E75', borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:.4, fill:false, yAxisID:'y' },
+      { label:'Redemption %', data:redeemAct, borderColor:'#3A7BD5', borderWidth:2, pointRadius:3, pointBackgroundColor:'#3A7BD5', tension:.4, fill:false, yAxisID:'y2' },
+      { label:'Redemption forecast', data:redeemFC, borderColor:'#3A7BD5', borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:.4, fill:false, yAxisID:'y2' },
+      { label:'Revenue $K', data:revAct, borderColor:'#BA7517', borderWidth:2, pointRadius:3, pointBackgroundColor:'#BA7517', tension:.4, fill:false, yAxisID:'y3' },
+      { label:'Revenue forecast', data:revFC, borderColor:'#BA7517', borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:.4, fill:false, yAxisID:'y3' }
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{
+      legend:{ display:false },
+      tooltip:{
+        backgroundColor:'#fff', titleColor:'#18180F', bodyColor:'#52524A',
+        borderColor:'rgba(0,0,0,.12)', borderWidth:1, padding:10,
+        callbacks:{
+          label: ctx => {
+            if(ctx.parsed.y === null) return null;
+            const n = ctx.dataset.label;
+            if(n.includes('Member')) return ' Members: ' + ctx.parsed.y + '00';
+            if(n.includes('Redeem')) return ' Redemption: ' + ctx.parsed.y + '%';
+            if(n.includes('Revenue')) return ' Revenue: $' + ctx.parsed.y + 'K';
+            return n + ': ' + ctx.parsed.y;
+          }
+        }
+      }
+    },
+    scales:{
+      x:{ grid:{display:false}, ticks:{ font:{size:10,family:'DM Sans'}, color:'#9A9A90' } },
+      y:{ display:false, min:280 }, y2:{ display:false, min:7, max:18 }, y3:{ display:false, min:60 }
+    }
+  }
+});
+
+// ── Donut ──
+new Chart(document.getElementById('redeemChart'), {
+  type:'doughnut',
+  data:{
+    labels:['Checkout discount','Free shipping','Referral reward','Free product'],
+    datasets:[{ data:[48,27,14,11], backgroundColor:['#1D9E75','#3A7BD5','#EF9F27','#7C6FCD'], borderWidth:2, borderColor:'#fff', hoverOffset:6 }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false, cutout:'68%',
+    plugins:{
+      legend:{ display:false },
+      tooltip:{ backgroundColor:'#fff', titleColor:'#18180F', bodyColor:'#52524A', borderColor:'rgba(0,0,0,.12)', borderWidth:1 }
+    }
+  }
+});
+
+// ── Sparklines ──
+function makeSpark(id, vals, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const max = Math.max(...vals);
+  vals.forEach(v => {
+    const b = document.createElement('div');
+    b.className = 'spark-bar';
+    b.style.height = Math.round((v/max)*20)+'px';
+    b.style.background = color;
+    b.style.opacity = '.72';
+    el.appendChild(b);
+  });
+}
+makeSpark('spark1',[18,19,20,21,21,22],'#EF9F27');
+makeSpark('spark2',[55,57,59,60,61,61],'#1D9E75');
+makeSpark('spark3',[70,71,72,73,74,74],'#1D9E75');
+makeSpark('spark4',[84,85,86,87,88,88],'#1D9E75');
+</script>
+</body>
+</html>
